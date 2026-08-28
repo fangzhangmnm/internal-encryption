@@ -1,0 +1,20 @@
+{
+  "name": "@internal/encryption",
+  "version": "0.0.0",
+  "description": "PWA 家族内容加密库（明文 zip 外壳 + 7z AES-256 payload + 尾部加密 peek；7-Zip 可开 = anti-abandonware）",
+  "type": "module",
+  "license": "MIT",
+  "files": ["dist", "src", "README.md"],
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" }
+  },
+  "scripts": {
+    "build": "bash scripts/build.sh",
+    "test": "node test/run.mjs",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "release": "bash scripts/release.sh"
+  },
+  "devDependencies": {
+    "typescript": "5.7.3"
+  }
+}
