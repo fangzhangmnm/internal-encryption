@@ -184,6 +184,15 @@ describe("remember · idbSecretStore（IndexedDB 事务语义）", () => {
     await k.forget();
     eq(await k.recall(), null);
   });
+  it("没记过：recall / status / forget 都不建库；remember 才建（0.2.2）", async () => {
+    const idb = createFakeIndexedDB();
+    const k = createPasswordKeeper({ dbName: "x.remember", store: idbSecretStore("x.remember", idb) });
+    eq(await k.recall(), null); eq((await k.status()).remembered, false); await k.forget();
+    eq(idb.dbs.has("x.remember"), false, "读 / 删不该建库");
+    await k.remember(PW);
+    eq(idb.dbs.has("x.remember"), true);
+    eq(await createPasswordKeeper({ dbName: "x.remember", store: idbSecretStore("x.remember", idb) }).recall(), PW, "另一个实例（下次开页）读得到");
+  });
   it("别处 deleteDatabase（还原出厂）→ 开着的连接让位，删得掉；之后再用自动重开（0.2.1）", async () => {
     const idb = createFakeIndexedDB();
     const s = idbSecretStore("x.remember", idb);

@@ -46,6 +46,7 @@ export function createFakeIndexedDB(opts: FakeIdbOpts = {}): IDBFactory & { dbs:
   const conns = new Map<string, Set<any>>();   // 库名 → 开着的连接（deleteDatabase 要等它们 close）
   const factory: any = {
     dbs,
+    databases: async () => [...dbs.keys()].map((name) => ({ name, version: 1 })),
     open(name: string) {
       const req = new Req();
       later(() => {

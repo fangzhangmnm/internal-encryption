@@ -87,10 +87,17 @@ export function idbSecretStore(dbName: string, factory?: IDBFactory): SecretStor
       t.onabort = () => reject(t.error ?? new Error("remember: transaction aborted"));
     });
   }
+  // 只读 / 删除不建库（0.2.2，Claude Opus 5.5）：没记过的设备上开页 recall() 不该凭空长出一个空库（还原出厂刚删完、下次开页又出现）。
+  //   枚举不了库的平台（老 Firefox）照旧打开——宁可多一个空库，不可读漏一条记录。
+  const exists = async (): Promise<boolean> => {
+    if (dbp) return true;
+    if (typeof idb.databases !== "function") return true;
+    try { return (await idb.databases()).some((d) => d.name === dbName); } catch { return true; }
+  };
   return {
-    get: () => tx<unknown>("readonly", (s) => s.get(RECORD_KEY)),
+    get: async () => ((await exists()) ? tx<unknown>("readonly", (s) => s.get(RECORD_KEY)) : undefined),
     put: async (rec) => { await tx("readwrite", (s) => s.put(rec, RECORD_KEY)); },
-    delete: async () => { await tx("readwrite", (s) => s.delete(RECORD_KEY)); },
+    delete: async () => { if (await exists()) await tx("readwrite", (s) => s.delete(RECORD_KEY)); },
   };
 }
 
