@@ -68,7 +68,8 @@ export function idbSecretStore(dbName: string, factory?: IDBFactory): SecretStor
     dbp ??= new Promise((resolve, reject) => {
       const req = idb.open(dbName, 1);
       req.onupgradeneeded = () => { req.result.createObjectStore(STORE_NAME); };
-      req.onsuccess = () => resolve(req.result);
+      // 别处要删 / 升级这个库（还原出厂的 deleteDatabase）→ 让出连接，不然对方被堵到超时、报「没删掉」。下次用时重开。（0.2.1，Claude Opus 5.5）
+      req.onsuccess = () => { const d = req.result; d.onversionchange = () => { d.close(); dbp = null; }; resolve(d); };
       req.onerror = () => reject(req.error);
     });
     dbp.catch(() => { dbp = null; });

@@ -43,6 +43,7 @@ export function createFakeIndexedDB(opts: FakeIdbOpts = {}): IDBFactory & { dbs:
     return tx;
   }
 
+  const conns = new Map<string, Set<any>>();   // 库名 → 开着的连接（deleteDatabase 要等它们 close）
   const factory: any = {
     dbs,
     open(name: string) {
@@ -52,11 +53,28 @@ export function createFakeIndexedDB(opts: FakeIdbOpts = {}): IDBFactory & { dbs:
         const fresh = !stores;
         if (!stores) { stores = new Map(); dbs.set(name, stores); }
         const s = stores;
-        req.result = {
+        const conn: any = {
+          onversionchange: null,
+          close: () => { conns.get(name)?.delete(conn); },
           createObjectStore: (n: string) => { s.set(n, new Map()); },
           transaction: (n: string, mode: string) => makeTx(s, mode),
         };
+        if (!conns.has(name)) conns.set(name, new Set());
+        conns.get(name)!.add(conn);
+        req.result = conn;
         if (fresh) req.onupgradeneeded?.();
+        req.onsuccess?.();
+      });
+      return req;
+    },
+    /** 真 IDB 语义的子集：先给开着的连接发 versionchange；还有没 close 的 → 一直挂着（blocked，不 success）。 */
+    deleteDatabase(name: string) {
+      const req: any = new Req();
+      req.onblocked = null;
+      later(() => {
+        for (const c of [...(conns.get(name) ?? [])]) c.onversionchange?.();
+        if ((conns.get(name)?.size ?? 0) > 0) { req.onblocked?.(); return; }
+        dbs.delete(name);
         req.onsuccess?.();
       });
       return req;

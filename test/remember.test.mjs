@@ -184,6 +184,21 @@ describe("remember · idbSecretStore（IndexedDB 事务语义）", () => {
     await k.forget();
     eq(await k.recall(), null);
   });
+  it("别处 deleteDatabase（还原出厂）→ 开着的连接让位，删得掉；之后再用自动重开（0.2.1）", async () => {
+    const idb = createFakeIndexedDB();
+    const s = idbSecretStore("x.remember", idb);
+    await s.put({ a: 1 });                       // 连接已开着
+    const outcome = await new Promise((resolve) => {
+      const req = idb.deleteDatabase("x.remember");
+      req.onsuccess = () => resolve("deleted");
+      req.onblocked = () => resolve("blocked");
+    });
+    eq(outcome, "deleted", "连接没让位 = 还原出厂会被堵");
+    eq(idb.dbs.has("x.remember"), false);
+    eq(await s.get(), undefined, "删后重开是空库");
+    await s.put({ b: 2 });
+    eq((await s.get()).b, 2, "重开后照常写");
+  });
   it("没有 IndexedDB 又没注入 store → 建 keeper 当场抛（不静默替身）", () => {
     assert(typeof globalThis.indexedDB === "undefined", "node 里本来就没有 indexedDB");
     let threw = false;
