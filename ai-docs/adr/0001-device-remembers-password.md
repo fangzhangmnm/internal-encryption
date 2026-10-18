@@ -53,4 +53,5 @@
 5. 还原出厂 → `forget()`（或整库 deleteDatabase）；清本机缓存 / 强制更新**不**碰它。
 6. 持久层白名单：接缝文件登记进该 app 的白名单表 + 守卫测试；值级 import 只准接缝文件（各 app 的 build lint 已有同款规则）。
 7. 该 app 的 ADR 补一条短的指到这里（KudsRocket 已在 CLAUDE.md 记过，可补 ADR）。
-8. 真机：iPad Edge（user 的日常）至少验一次「记住 → 关页 → 重开不用输 → 忘记 → 要输」。
+8. **和别人共 origin 的分发形态不提供**（2026-10-17 WeebPaint 查出、user「做」；edited by Claude Opus 5.5）：file:// 单文件 html（Chromium 所有本地 html 共一个存储桶）、itch（所有网页游戏共 `html-classic.itch.zone`）这类形态里，同源的别人能拿那把钥匙直接解——整个关掉（不给勾、不恢复、不碰存储）。WeebPaint = `isStandaloneHtml()`。
+9. 真机：iPad Edge（user 的日常）至少验一次「记住 → 关页 → 重开不用输 → 忘记 → 要输」。
