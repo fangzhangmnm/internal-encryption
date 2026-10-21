@@ -1,0 +1,40 @@
+<!doctype html><meta charset="utf-8"><title>remember probe</title>
+<script type="module">
+// 记住口令的真浏览器探针（真 IndexedDB、真 WebCrypto、真 indexedDB.databases()）。created 20261021 by Claude Fable 5.1
+import { createPasswordKeeper, MAX_REMEMBER_MS } from "../../dist/index.js";
+const DB = "probe-app.remember";
+const out = [];
+const ok = (name, cond, info = "") => out.push({ name, ok: !!cond, info });
+const dbs = async () => (await indexedDB.databases()).map((d) => d.name).filter((n) => n === DB);
+const step = new URLSearchParams(location.search).get("step") ?? "1";
+try {
+  const k = createPasswordKeeper({ dbName: DB });
+  if (step === "1") {
+    ok("开页前没有库", (await dbs()).length === 0, JSON.stringify(await dbs()));
+    const r0 = await k.recall();
+    ok("没记过：recall → null", r0 === null, String(r0));
+    ok("recall 不凭空建库（0.2.2）", (await dbs()).length === 0, JSON.stringify(await dbs()));
+    const st0 = await k.status();
+    ok("没记过：status.remembered=false", st0.remembered === false && st0.expiresAt === null);
+    const { expiresAt } = await k.remember("s3cret-密码", { ttlMs: 365 * 24 * 3600e3 });
+    ok("ttl 超上限钳到 30 天", expiresAt - Date.now() <= MAX_REMEMBER_MS && expiresAt - Date.now() > MAX_REMEMBER_MS - 60e3, String(expiresAt - Date.now()));
+    ok("记了之后库在", (await dbs()).length === 1);
+    ok("同页 recall 回口令", (await k.recall()) === "s3cret-密码");
+  } else if (step === "2") {
+    ok("重开页：库还在", (await dbs()).length === 1);
+    const r = await k.recall();
+    ok("★重开页 recall 回口令（不可导出钥匙 + IDB 持久化真的跨页面）", r === "s3cret-密码", String(r));
+    const st = await k.status();
+    ok("status.remembered=true 且有 expiresAt", st.remembered === true && typeof st.expiresAt === "number");
+    await k.forget();
+    ok("forget 后 recall → null", (await k.recall()) === null);
+    ok("forget 后 status.remembered=false", (await k.status()).remembered === false);
+  } else if (step === "3") {
+    ok("重开页：forget 过 → 仍 null", (await k.recall()) === null);
+    await new Promise((res, rej) => { const q = indexedDB.deleteDatabase(DB); q.onsuccess = res; q.onerror = () => rej(q.error); q.onblocked = () => rej(new Error("blocked")); });
+    ok("deleteDatabase 不被开着的连接堵住（0.2.1 让位）", true);
+    ok("删库后 recall 不复活库（0.2.2）", (await k.recall()) === null && (await dbs()).length === 0, JSON.stringify(await dbs()));
+  }
+} catch (e) { ok("探针异常", false, String(e && e.stack || e)); }
+window.__PROBE__ = out;
+</script>

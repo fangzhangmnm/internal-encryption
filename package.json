@@ -18,6 +18,7 @@
   "scripts": {
     "build": "bash scripts/build.sh",
     "test": "node test/run.mjs",
+    "probe": "bash scripts/build.sh && node test/probes/run.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "release": "bash scripts/release.sh"
   },
