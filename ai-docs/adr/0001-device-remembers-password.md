@@ -23,7 +23,7 @@
 - **加密防的是云端那一方**（微软读 blob、网盘泄露、误分享、内容审查——§3 B4）。拿着已解锁设备的人本来就什么都看得见：OneDrive app、浏览器都登着。ADR-0026 原则一「把密钥交给已经能看见明文的一方是免费的」顺下来：**记住口令不新增信任方，新增的只是「时间」**——会话结束后口令还留在设备上。过期时间就是给这段时间封顶。
 - 多出来的暴露面与对策：
   1. 设备在解锁状态下被拿走 = 全开（§3 D1）。和 OneDrive app 一样，接受；user 知情 opt-in；30 天后自动作废。
-  2. 同源脚本能读到口令（XSS）。家族无 CDN、无第三方脚本、依赖全 vendor；残余 = 渲染用户内容的 innerHTML。**家族目前没有一个 app 有 CSP**——这是接本功能的 app 该补的一层，不是本库能替它做的。
+  2. 同源脚本能读到口令（XSS）。家族无 CDN、无第三方脚本、依赖全 vendor；残余 = 渲染用户内容的 innerHTML。~~家族目前没有一个 app 有 CSP~~——这是接本功能的 app 该补的一层，不是本库能替它做的。（2026-10-17 三家都上了 meta CSP：WeebPaint v0.14.34 / WXHW v2.3.41 / KudsRocket v0.1.58；家族根 memory「家族页面 CSP」有现状。edited by Claude Fable 5.1 2026-10-21）
   3. 浏览器数据进系统备份 / 被整 profile 拷走。不可导出钥匙在多数平台上随 profile 一起走，**按能解来算**（未逐平台核实，不当承诺）。
   4. 丢设备后换口令 = 旧密文 + 旧口令在对方手里照样开。这是端到端加密的底价，记不记口令都一样（ADR-0026「被否决的替代方案」里已说清）。
   5. 时钟往回拨能延命。接受（拿着设备的人本来就能开）；反方向做了保守处理：expiresAt 比「现在 + 上限 + 1 天」还远 = 时钟被拨过 / 记录不对 → 当没记。
@@ -55,3 +55,4 @@
 7. 该 app 的 ADR 补一条短的指到这里（KudsRocket 已在 CLAUDE.md 记过，可补 ADR）。
 8. **和别人共 origin 的分发形态不提供**（2026-10-17 WeebPaint 查出、user「做」；edited by Claude Opus 5.5）：file:// 单文件 html（Chromium 所有本地 html 共一个存储桶）、itch（所有网页游戏共 `html-classic.itch.zone`）这类形态里，同源的别人能拿那把钥匙直接解——整个关掉（不给勾、不恢复、不碰存储）。WeebPaint = `isStandaloneHtml()`。
 9. 真机：iPad Edge（user 的日常）至少验一次「记住 → 关页 → 重开不用输 → 忘记 → 要输」。
+10. **prod 和 `/dev/` 同源 = 同一把记住的钥匙，接受、不按频道分库名**（周账 F-62，2026-10-21 Claude Fable 5.1 审后判定，**等 user 点头**）。三家的库名都不带频道（`weebpaint-….remember` / WXHW `REMEMBER_DB` / `kudsrocket.remember`），站点根 = prod、`/dev/` = dev 是同一个 origin，所以共用。为什么不分：同源已经共用得更多——store 的本机库（`<appId>.defaultStore`，dev 本来就在真数据上测）、MSAL 的令牌缓存（dev 页能用 prod 的登录拉云端密文）；dev 里的 XSS 拿得到的远不止这把钥匙，分开只是看起来安全。而且 user 在 dev 里也会勾「记住」，分开 = 两条记录、同一个口令，攻击面一样。真正挡 XSS 的那层是 CSP（第 2 条），10-17 已上。会发生的唯一交互：dev 先收了带新 `RECORD_VERSION` 的库版本 → prod 读到认不得 → 顺手删 → prod 下次要重输一次（保守方向，不丢东西）。
